@@ -99,6 +99,7 @@ function loadSource(sourceName, env) {
 function start() {
     const config = loadConfig();
     const source = loadSource(config.source, process.env);
+    const forecastSource = require('./sunpilot').createSource(process.env);
     const upload = createUploader(config);
     let initialUploadDone = false;
     let uploading = false;
@@ -107,7 +108,19 @@ function start() {
         if (uploading) return;
         uploading = true;
         try {
-            await upload(reading);
+            let currentReading = reading;
+            if (forecastSource && buildPayload(config, currentReading)) {
+                try {
+                    await forecastSource.refresh();
+                    const forecastKwh = forecastSource.getForecastKwh();
+                    if (Number.isFinite(forecastKwh)) {
+                        currentReading = { ...currentReading, forecastKwh };
+                    }
+                } catch (error) {
+                    console.warn(`SunPilot: Prognose konnte nicht gelesen werden: ${error.message}`);
+                }
+            }
+            await upload(currentReading);
         } finally {
             uploading = false;
         }

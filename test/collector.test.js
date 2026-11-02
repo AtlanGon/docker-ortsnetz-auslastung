@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const { buildPayload, createUploader, loadConfig } = require('../src');
 const { parseNumber } = require('../src/mqtt/parser');
 const { createSource: createSolarAssistantSource } = require('../src/solarassistant');
+const { createSource: createSunPilotSource } = require('../src/sunpilot');
 
 const env = {
     LATITUDE: '52.5',
@@ -117,6 +118,37 @@ test('accepts a SolarAssistant bearer token and a full metrics URL', async () =>
     await source.refresh();
     assert.equal(requestUrl, 'http://solarassistant.local/api/v1/metrics');
     assert.equal(requestOptions.headers.Authorization, 'Bearer test-token');
+});
+
+test('reads the selected local-day total forecast from SunPilot', async () => {
+    let requestUrl;
+    let requestOptions;
+    const source = createSunPilotSource({
+        SUNPILOT_API_URL: 'https://sunpilot.example/',
+        SUNPILOT_PLANT_ID: '12587.berlin.wisslerstrasse_15',
+        SUNPILOT_API_TOKEN: 'forecast-token',
+        SUNPILOT_TIME_ZONE: 'Europe/Berlin',
+        SUNPILOT_DAY_OFFSET: '1',
+        SUNPILOT_FORECAST_KIND: 'ensemble_median',
+    }, async (url, options) => {
+        requestUrl = new URL(url);
+        requestOptions = options;
+        return {
+            ok: true,
+            json: async () => ({
+                energy_per_day: [
+                    { day: '2026-11-02', energy_kwh: { total: { ensemble_median: 8.1 } } },
+                    { day: '2026-11-03', energy_kwh: { total: { ensemble_median: 3.56 } } },
+                ],
+            }),
+        };
+    });
+
+    assert.equal(await source.refresh(Date.parse('2026-11-02T18:04:00Z')), 3.56);
+    assert.equal(requestUrl.pathname, '/api/v1/plants/12587.berlin.wisslerstrasse_15/forecasts/power_pv');
+    assert.equal(requestUrl.searchParams.get('from'), '2026-11-03');
+    assert.equal(requestUrl.searchParams.get('to'), '2026-11-03');
+    assert.equal(requestOptions.headers.Authorization, 'Bearer forecast-token');
 });
 
 test('rejects unsupported data source names', () => {

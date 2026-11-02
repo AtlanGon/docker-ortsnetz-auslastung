@@ -19,8 +19,9 @@ vorliegen. Danach wird alle fünf Minuten gesendet. Veraltete Werte und
 Spannungen außerhalb von 150 bis 300 V werden verworfen. MQTT-Payloads können
 Zahlen oder JSON sein; `MQTT_JSON_KEY` und
 `MQTT_PV_FORECAST_JSON_KEY` wählen bei Bedarf verschachtelte JSON-Felder.
-Die MQTT-PV-Tagesprognose wird in Wh erwartet und vom Adapter für die API in kWh
-umgerechnet.
+Eine MQTT-PV-Tagesprognose wird in Wh erwartet und für die API in kWh
+umgerechnet. Alternativ kann SunPilot als unabhängige Prognosequelle konfiguriert
+werden.
 
 Alle Laufzeitwerte stehen in `.env`; die Namen und Beispielwerte sind in
 `.env.example` dokumentiert. Bei einem Broker auf dem Docker-Host kann
@@ -46,6 +47,20 @@ ab. Der Adapter erfindet keine fehlenden Phasenwerte: Wenn die SolarAssistant-AP
 keine drei passenden Phasenspannungen liefert, kann diese Quelle keine gültige
 Messung an die Ortsnetz-API senden. SolarAssistant API und Datenbank sollten nur
 im lokalen Netzwerk erreichbar sein.
+
+## SunPilot-Prognose
+
+Optional ruft der Collector `GET /api/v1/plants/{plant}/forecasts/power_pv` ab
+und liest den Gesamt-Tageswert aus
+`energy_per_day[].energy_kwh.total.deterministic`. Diese Prognose ergänzt die
+ausgewählte Messquelle; MQTT oder SolarAssistant liefern weiterhin die
+Phasenspannungen.
+
+Die SunPilot-URL, Plant-ID, Zeitzone, Tagesoffset und Prognosevariante sind in
+`.env.example` konfiguriert. Standardmäßig wird der heutige lokale Tag in
+`Europe/Berlin` und der deterministische Gesamtwert verwendet. `SUNPILOT_DAY_OFFSET=1`
+fragt wie im Beispiel den nächsten Tag ab. Ein optionaler API-Token wird als
+Bearer-Token gesendet. Mit leerem `SUNPILOT_API_URL` wird SunPilot deaktiviert.
 
 ## Deployment in Arcane
 
