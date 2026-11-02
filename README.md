@@ -49,22 +49,28 @@ im lokalen Netzwerk erreichbar sein.
 
 ## Deployment in Arcane
 
-Arcane verwaltet den Collector als Compose-Projekt. Die Projektdateien müssen im
-Arcane-Projektordner verfügbar sein, weil `compose.yaml` das Image mit `build: .`
-aus dem Dockerfile baut.
+Arcane kann das GitHub-Repository direkt als Compose-Projekt synchronisieren.
+Zuerst müssen die Änderungen aus diesem Workspace in den ausgewählten GitHub-
+Branch übertragen werden. Der Compose-Build verwendet `build: .`, daher braucht
+Arcane neben `compose.yaml` auch `Dockerfile`, `package*.json` und `src/`.
 
-1. Stelle sicher, dass `Dockerfile`, `compose.yaml`, `package.json`,
-	`package-lock.json` und der Ordner `src` im Git-Repository vorhanden sind.
-2. In Arcane **Projects** öffnen und **Create Project** wählen. Compose-Inhalt
-	aus `compose.yaml` einfügen. Die Build-Dateien über Git-Sync oder den
-	Projekt-Workspace hinzufügen.
-3. Im Editor **Environment Configuration (.env)** Werte aus `.env.example`
-	eintragen. Für MQTT `DATA_SOURCE=mqtt`, für die direkte SolarAssistant-API
-	`DATA_SOURCE=solarassistant` setzen. Zugangsdaten nicht ins Git-Repository
-	committen.
-4. **Create Project** speichern. Arcane baut das Image und startet den Container.
-5. Unter **Projects** den Projektstatus prüfen; die Logs des `collector`-Dienstes
-	zeigen MQTT-Verbindung, API-Uploads und Fehler.
+1. In Arcane **Projects** öffnen und im Menü neben **Create Project** den Punkt
+	**From Git Repo** wählen.
+2. **Pull** und **Target Type: Project** wählen, einen Projektnamen setzen und
+	**Create a new project** verwenden.
+3. Repository `https://github.com/AtlanGon/docker-ortsnetz-auslastung` und
+	Branch `main` wählen. Als **Compose File Path** `compose.yaml` eintragen.
+4. **Sync Files** aktivieren. Ohne diese Option übernimmt Arcane nur die Compose-
+	Datei; Dockerfile und Quellcode fehlen dann im Build-Kontext.
+5. Unter **Environment Configuration (.env)** die benötigten Werte aus
+	`.env.example` eintragen. Für MQTT `DATA_SOURCE=mqtt`, für die direkte
+	SolarAssistant-API `DATA_SOURCE=solarassistant` setzen. Zugangsdaten nicht
+	ins Git-Repository committen.
+6. **Add Sync** wählen. Arcane synchronisiert das Repository, baut das Image und
+	startet das Projekt. Bei späteren Änderungen zuerst committen und pushen,
+	danach in Arcane **Sync from Git** ausführen.
+7. Unter **Projects** den Status prüfen; die Logs des `collector`-Dienstes zeigen
+	Verbindungen, API-Uploads und Fehler.
 
 Es muss kein Port veröffentlicht werden: Der Collector baut nur ausgehend eine
 Verbindung zum Messdaten-Endpunkt und zur jeweiligen Datenquelle auf. Für Broker

@@ -75,6 +75,7 @@ function createUploader(config, fetchImpl = fetch) {
                 console.warn(`Ortsnetz-Auslastung: HTTP ${response.status}: ${body}`);
                 return false;
             }
+            console.info(`Ortsnetz-Auslastung: übertragene Messwerte: ${JSON.stringify(payload)}`);
             console.info(`Ortsnetz-Auslastung: Messung angenommen: ${body}`);
             return true;
         } catch (error) {

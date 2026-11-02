@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { buildPayload, loadConfig } = require('../src');
+const { buildPayload, createUploader, loadConfig } = require('../src');
 const { parseNumber } = require('../src/mqtt/parser');
 const { createSource: createSolarAssistantSource } = require('../src/solarassistant');
 
@@ -40,6 +40,28 @@ test('rejects missing and implausible source voltages', () => {
     const config = loadConfig(env);
     assert.equal(buildPayload(config, null), null);
     assert.equal(buildPayload(config, { l1V: 230, l2V: 231, l3V: 301 }), null);
+});
+
+test('logs the measurement payload after the API accepts it', async () => {
+    const config = loadConfig(env);
+    const loggedMessages = [];
+    let sentPayload;
+    const originalInfo = console.info;
+    console.info = (message) => loggedMessages.push(message);
+
+    try {
+        const upload = createUploader(config, async (_url, options) => {
+            sentPayload = JSON.parse(options.body);
+            return { status: 202, text: async () => '{"accepted":true}' };
+        });
+        assert.equal(await upload({ l1V: 230, l2V: 231, l3V: 229, frequencyHz: 50 }), true);
+    } finally {
+        console.info = originalInfo;
+    }
+
+    assert.equal(sentPayload.l1_v, 230);
+    assert.ok(loggedMessages.some((message) => message.includes('"l1_v":230')));
+    assert.ok(loggedMessages.some((message) => message.includes('"grid_frequency_hz":50')));
 });
 
 test('reads SolarAssistant phase metrics through its authenticated REST API', async () => {
