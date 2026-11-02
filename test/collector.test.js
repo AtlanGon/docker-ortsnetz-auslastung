@@ -151,15 +151,45 @@ test('reads the current local-day total forecast from SunPilot', async () => {
 });
 
 test('reports SunPilot 401 without revealing the configured token', async () => {
+    let requestCount = 0;
     const source = createSunPilotSource({
         SUNPILOT_API_URL: 'https://sunpilot.example',
         SUNPILOT_PLANT_ID: 'test-plant',
         SUNPILOT_API_TOKEN: 'secret-token',
-    }, async () => ({ ok: false, status: 401 }));
+    }, async () => {
+        requestCount += 1;
+        return { ok: false, status: 401 };
+    });
 
     await assert.rejects(source.refresh(Date.parse('2026-11-02T18:04:00Z')), {
-        message: /HTTP 401 \(SUNPILOT_API_TOKEN wurde abgelehnt/,
+        message: /HTTP 401 \(SUNPILOT_API_TOKEN wurde als Bearer und X-API-Key abgelehnt/,
     });
+    assert.equal(requestCount, 2);
+});
+
+test('retries SunPilot with X-API-Key after Bearer authentication fails', async () => {
+    const requestHeaders = [];
+    const source = createSunPilotSource({
+        SUNPILOT_API_URL: 'https://sunpilot.example',
+        SUNPILOT_PLANT_ID: 'test-plant',
+        SUNPILOT_API_TOKEN: 'test-token',
+    }, async (_url, options) => {
+        requestHeaders.push(options.headers);
+        if (requestHeaders.length === 1) return { ok: false, status: 401 };
+        return {
+            ok: true,
+            json: async () => ({
+                energy_per_day: [
+                    { day: '2026-11-02', energy_kwh: { total: { deterministic: 3.32 } } },
+                ],
+            }),
+        };
+    });
+
+    assert.equal(await source.refresh(Date.parse('2026-11-02T18:04:00Z')), 3.32);
+    assert.equal(requestHeaders[0].Authorization, 'Bearer test-token');
+    assert.equal(requestHeaders[1]['X-API-Key'], 'test-token');
+    assert.equal(requestHeaders[1].Authorization, undefined);
 });
 
 test('rejects unsupported data source names', () => {

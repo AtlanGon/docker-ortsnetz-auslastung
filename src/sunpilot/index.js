@@ -31,13 +31,20 @@ function createSource(env, fetchImpl = fetch) {
             const headers = { Accept: 'application/json' };
             if (config.token) headers.Authorization = `Bearer ${config.token}`;
 
-            const response = await fetchImpl(url, {
+            const requestOptions = {
                 headers,
                 signal: AbortSignal.timeout(10000),
-            });
+            };
+            let response = await fetchImpl(url, requestOptions);
+            if (response.status === 401 && config.token) {
+                response = await fetchImpl(url, {
+                    ...requestOptions,
+                    headers: { Accept: 'application/json', 'X-API-Key': config.token },
+                });
+            }
             if (response.status === 401) {
                 const reason = config.token
-                    ? 'SUNPILOT_API_TOKEN wurde abgelehnt; Token und Arcane-Deployment prüfen'
+                    ? 'SUNPILOT_API_TOKEN wurde als Bearer und X-API-Key abgelehnt; Token und Berechtigung prüfen'
                     : 'SUNPILOT_API_TOKEN fehlt im Container';
                 throw new Error(`HTTP 401 (${reason})`);
             }
