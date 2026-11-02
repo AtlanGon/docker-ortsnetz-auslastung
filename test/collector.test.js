@@ -126,7 +126,7 @@ test('reads the current local-day total forecast from SunPilot', async () => {
     const source = createSunPilotSource({
         SUNPILOT_API_URL: 'https://sunpilot.example/',
         SUNPILOT_PLANT_ID: '12587.berlin.wisslerstrasse_15',
-        SUNPILOT_API_TOKEN: 'forecast-token',
+        SUNPILOT_API_TOKEN: 'Bearer forecast-token',
         SUNPILOT_TIME_ZONE: 'Europe/Berlin',
         SUNPILOT_FORECAST_KIND: 'ensemble_median',
     }, async (url, options) => {
@@ -148,6 +148,18 @@ test('reads the current local-day total forecast from SunPilot', async () => {
     assert.equal(requestUrl.searchParams.get('from'), '2026-11-02');
     assert.equal(requestUrl.searchParams.get('to'), '2026-11-02');
     assert.equal(requestOptions.headers.Authorization, 'Bearer forecast-token');
+});
+
+test('reports SunPilot 401 without revealing the configured token', async () => {
+    const source = createSunPilotSource({
+        SUNPILOT_API_URL: 'https://sunpilot.example',
+        SUNPILOT_PLANT_ID: 'test-plant',
+        SUNPILOT_API_TOKEN: 'secret-token',
+    }, async () => ({ ok: false, status: 401 }));
+
+    await assert.rejects(source.refresh(Date.parse('2026-11-02T18:04:00Z')), {
+        message: /HTTP 401 \(SUNPILOT_API_TOKEN wurde abgelehnt/,
+    });
 });
 
 test('rejects unsupported data source names', () => {

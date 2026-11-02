@@ -7,7 +7,7 @@ function createSource(env, fetchImpl = fetch) {
     const config = {
         apiUrl: env.SUNPILOT_API_URL || DEFAULT_API_URL,
         plantId: env.SUNPILOT_PLANT_ID || '',
-        token: env.SUNPILOT_API_TOKEN || '',
+        token: normalizeToken(env.SUNPILOT_API_TOKEN || ''),
         timeZone: env.SUNPILOT_TIME_ZONE || 'Europe/Berlin',
         kind: env.SUNPILOT_FORECAST_KIND || 'deterministic',
     };
@@ -35,6 +35,12 @@ function createSource(env, fetchImpl = fetch) {
                 headers,
                 signal: AbortSignal.timeout(10000),
             });
+            if (response.status === 401) {
+                const reason = config.token
+                    ? 'SUNPILOT_API_TOKEN wurde abgelehnt; Token und Arcane-Deployment prüfen'
+                    : 'SUNPILOT_API_TOKEN fehlt im Container';
+                throw new Error(`HTTP 401 (${reason})`);
+            }
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`);
             }
@@ -52,6 +58,10 @@ function createSource(env, fetchImpl = fetch) {
             return forecastKwh;
         },
     };
+}
+
+function normalizeToken(token) {
+    return token.trim().replace(/^Bearer\s+/i, '');
 }
 
 function getLocalDate(now, timeZone) {
@@ -79,4 +89,4 @@ function validateConfig(config) {
     }
 }
 
-module.exports = { createSource, getLocalDate };
+module.exports = { createSource, getLocalDate, normalizeToken };
