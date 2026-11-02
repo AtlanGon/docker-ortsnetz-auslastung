@@ -120,7 +120,7 @@ test('accepts a SolarAssistant bearer token and a full metrics URL', async () =>
     assert.equal(requestOptions.headers.Authorization, 'Bearer test-token');
 });
 
-test('reads the selected local-day total forecast from SunPilot', async () => {
+test('reads the current local-day total forecast from SunPilot', async () => {
     let requestUrl;
     let requestOptions;
     const source = createSunPilotSource({
@@ -128,7 +128,6 @@ test('reads the selected local-day total forecast from SunPilot', async () => {
         SUNPILOT_PLANT_ID: '12587.berlin.wisslerstrasse_15',
         SUNPILOT_API_TOKEN: 'forecast-token',
         SUNPILOT_TIME_ZONE: 'Europe/Berlin',
-        SUNPILOT_DAY_OFFSET: '1',
         SUNPILOT_FORECAST_KIND: 'ensemble_median',
     }, async (url, options) => {
         requestUrl = new URL(url);
@@ -144,10 +143,10 @@ test('reads the selected local-day total forecast from SunPilot', async () => {
         };
     });
 
-    assert.equal(await source.refresh(Date.parse('2026-11-02T18:04:00Z')), 3.56);
+    assert.equal(await source.refresh(Date.parse('2026-11-02T18:04:00Z')), 8.1);
     assert.equal(requestUrl.pathname, '/api/v1/plants/12587.berlin.wisslerstrasse_15/forecasts/power_pv');
-    assert.equal(requestUrl.searchParams.get('from'), '2026-11-03');
-    assert.equal(requestUrl.searchParams.get('to'), '2026-11-03');
+    assert.equal(requestUrl.searchParams.get('from'), '2026-11-02');
+    assert.equal(requestUrl.searchParams.get('to'), '2026-11-02');
     assert.equal(requestOptions.headers.Authorization, 'Bearer forecast-token');
 });
 

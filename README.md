@@ -56,11 +56,11 @@ und liest den Gesamt-Tageswert aus
 ausgewählte Messquelle; MQTT oder SolarAssistant liefern weiterhin die
 Phasenspannungen.
 
-Die SunPilot-URL, Plant-ID, Zeitzone, Tagesoffset und Prognosevariante sind in
-`.env.example` konfiguriert. Standardmäßig wird der heutige lokale Tag in
-`Europe/Berlin` und der deterministische Gesamtwert verwendet. `SUNPILOT_DAY_OFFSET=1`
-fragt wie im Beispiel den nächsten Tag ab. Ein optionaler API-Token wird als
-Bearer-Token gesendet. Mit leerem `SUNPILOT_API_URL` wird SunPilot deaktiviert.
+Die SunPilot-URL, Plant-ID, Zeitzone und Prognosevariante sind in `.env.example`
+konfiguriert. Abgefragt wird immer der aktuelle lokale Kalendertag in
+`Europe/Berlin`; standardmäßig wird dessen deterministischer Gesamtwert
+verwendet. Ein optionaler API-Token wird als Bearer-Token gesendet. Mit leerem
+`SUNPILOT_API_URL` wird SunPilot deaktiviert.
 
 ## Deployment in Arcane
 

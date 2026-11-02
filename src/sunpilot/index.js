@@ -9,7 +9,6 @@ function createSource(env, fetchImpl = fetch) {
         plantId: env.SUNPILOT_PLANT_ID || '',
         token: env.SUNPILOT_API_TOKEN || '',
         timeZone: env.SUNPILOT_TIME_ZONE || 'Europe/Berlin',
-        dayOffset: Number(env.SUNPILOT_DAY_OFFSET || 0),
         kind: env.SUNPILOT_FORECAST_KIND || 'deterministic',
     };
     validateConfig(config);
@@ -21,7 +20,7 @@ function createSource(env, fetchImpl = fetch) {
             return forecastKwh;
         },
         async refresh(now = Date.now()) {
-            const day = getLocalDate(now, config.timeZone, config.dayOffset);
+            const day = getLocalDate(now, config.timeZone);
             const url = new URL(
                 `/api/v1/plants/${encodeURIComponent(config.plantId)}/forecasts/power_pv`,
                 config.apiUrl,
@@ -55,7 +54,7 @@ function createSource(env, fetchImpl = fetch) {
     };
 }
 
-function getLocalDate(now, timeZone, dayOffset) {
+function getLocalDate(now, timeZone) {
     const parts = new Intl.DateTimeFormat('en-CA', {
         timeZone,
         year: 'numeric',
@@ -63,15 +62,12 @@ function getLocalDate(now, timeZone, dayOffset) {
         day: '2-digit',
     }).formatToParts(new Date(now));
     const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
-    const date = new Date(Date.UTC(Number(values.year), Number(values.month) - 1, Number(values.day) + dayOffset));
+    const date = new Date(Date.UTC(Number(values.year), Number(values.month) - 1, Number(values.day)));
     return date.toISOString().slice(0, 10);
 }
 
 function validateConfig(config) {
     if (!config.plantId) throw new Error('SUNPILOT_PLANT_ID muss gesetzt sein');
-    if (!Number.isInteger(config.dayOffset) || config.dayOffset < 0 || config.dayOffset > 7) {
-        throw new Error('SUNPILOT_DAY_OFFSET muss eine ganze Zahl zwischen 0 und 7 sein');
-    }
     if (!FORECAST_KINDS.includes(config.kind)) {
         throw new Error(`SUNPILOT_FORECAST_KIND muss einer dieser Werte sein: ${FORECAST_KINDS.join(', ')}`);
     }
