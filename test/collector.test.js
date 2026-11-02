@@ -1,5 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const { createHash } = require('node:crypto');
 const { buildPayload, createUploader, loadConfig } = require('../src');
 const { parseNumber } = require('../src/mqtt/parser');
 const { createSource: createSolarAssistantSource } = require('../src/solarassistant');
@@ -165,6 +166,31 @@ test('reports SunPilot 401 without revealing the configured token', async () => 
         message: /HTTP 401 \(SUNPILOT_API_TOKEN wurde als Bearer und X-API-Key abgelehnt/,
     });
     assert.equal(requestCount, 2);
+});
+
+test('auth diagnostics print a fingerprint but never the token', () => {
+    const token = 'test-secret-3';
+    const messages = [];
+    const originalInfo = console.info;
+    console.info = (message) => messages.push(message);
+
+    try {
+        createSunPilotSource({
+            SUNPILOT_API_URL: 'https://sunpilot.example',
+            SUNPILOT_PLANT_ID: 'test-plant',
+            SUNPILOT_API_TOKEN: token,
+            SUNPILOT_AUTH_DIAGNOSTICS: 'true',
+        }, async () => ({ ok: false, status: 401 }));
+    } finally {
+        console.info = originalInfo;
+    }
+
+    const output = messages.join('\n');
+    const fingerprint = createHash('sha256').update(token).digest('hex');
+    assert.match(output, /tokenPresent=true/);
+    assert.match(output, /tokenLength=13/);
+    assert.ok(output.includes(`tokenSHA256=${fingerprint}`));
+    assert.equal(output.includes(token), false);
 });
 
 test('retries SunPilot with X-API-Key after Bearer authentication fails', async () => {

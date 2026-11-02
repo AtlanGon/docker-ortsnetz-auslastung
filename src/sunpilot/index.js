@@ -1,3 +1,5 @@
+const { createHash } = require('node:crypto');
+
 const DEFAULT_API_URL = 'https://sunpilot.meinnetz.eu';
 const FORECAST_KINDS = ['deterministic', 'ensemble_p10', 'ensemble_median', 'ensemble_p90'];
 
@@ -8,10 +10,12 @@ function createSource(env, fetchImpl = fetch) {
         apiUrl: env.SUNPILOT_API_URL || DEFAULT_API_URL,
         plantId: env.SUNPILOT_PLANT_ID || '',
         token: normalizeToken(env.SUNPILOT_API_TOKEN || ''),
+        authDiagnostics: env.SUNPILOT_AUTH_DIAGNOSTICS === 'true',
         timeZone: env.SUNPILOT_TIME_ZONE || 'Europe/Berlin',
         kind: env.SUNPILOT_FORECAST_KIND || 'deterministic',
     };
     validateConfig(config);
+    if (config.authDiagnostics) logTokenDiagnostics(config.token);
 
     let forecastKwh = null;
 
@@ -67,6 +71,15 @@ function createSource(env, fetchImpl = fetch) {
     };
 }
 
+function logTokenDiagnostics(token) {
+    const fingerprint = token
+        ? createHash('sha256').update(token).digest('hex')
+        : 'none';
+    console.info(
+        `SunPilot Auth-Diagnose: tokenPresent=${Boolean(token)} tokenLength=${Buffer.byteLength(token, 'utf8')} tokenSHA256=${fingerprint}`,
+    );
+}
+
 function normalizeToken(token) {
     return token.trim().replace(/^Bearer\s+/i, '');
 }
@@ -96,4 +109,4 @@ function validateConfig(config) {
     }
 }
 
-module.exports = { createSource, getLocalDate, normalizeToken };
+module.exports = { createSource, getLocalDate, logTokenDiagnostics, normalizeToken };
