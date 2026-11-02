@@ -1,0 +1,12 @@
+{
+  "name": "docker-ortsnetz-auslastung",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "mqtt": "5.10.4"
+  }
+}
