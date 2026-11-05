@@ -11,6 +11,13 @@ function createSource(env) {
             l2: env.MQTT_TOPIC_L2,
             l3: env.MQTT_TOPIC_L3,
             frequency: env.MQTT_TOPIC_FREQUENCY || '',
+            l1A: env.MQTT_TOPIC_L1_A || '',
+            l2A: env.MQTT_TOPIC_L2_A || '',
+            l3A: env.MQTT_TOPIC_L3_A || '',
+            powerFactor: env.MQTT_TOPIC_POWER_FACTOR || '',
+            gridPower: env.MQTT_TOPIC_GRID_POWER_W || '',
+            apparentPower: env.MQTT_TOPIC_APPARENT_POWER_VA || '',
+            batterySoc: env.MQTT_TOPIC_BATTERY_SOC_PERCENT || '',
             forecast: env.MQTT_TOPIC_PV_FORECAST || '',
         },
         jsonKey: env.MQTT_JSON_KEY || '',
@@ -41,6 +48,15 @@ function createSource(env) {
             const reading = { l1V, l2V, l3V };
             const frequencyHz = config.topics.frequency ? currentValue(config.topics.frequency, now) : null;
             if (Number.isFinite(frequencyHz)) reading.frequencyHz = frequencyHz;
+            for (const [topicKey, readingKey] of [
+                ['l1A', 'l1A'], ['l2A', 'l2A'], ['l3A', 'l3A'],
+                ['powerFactor', 'powerFactor'], ['gridPower', 'gridPowerW'],
+                ['apparentPower', 'apparentPowerVa'], ['batterySoc', 'batterySocPercent'],
+            ]) {
+                const topic = config.topics[topicKey];
+                const value = topic ? currentValue(topic, now) : null;
+                if (Number.isFinite(value)) reading[readingKey] = value;
+            }
             const forecastWh = config.topics.forecast ? currentValue(config.topics.forecast, now) : null;
             if (Number.isFinite(forecastWh) && forecastWh >= 0) reading.forecastKwh = forecastWh / 1000;
             return reading;

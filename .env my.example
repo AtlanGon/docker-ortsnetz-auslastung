@@ -1,0 +1,82 @@
+# Ziel-API fuer Messungen (Ortsnetz-Auslastung).
+API_URL=https://www.ortsnetz-auslastung.de/v1/measurements
+# Standortkoordinaten als Dezimalgrad.
+LATITUDE=52.520008
+LONGITUDE=13.404954
+# Optionale installierte PV-Leistung in kWp; fuer PV-Prognosen erforderlich.
+PLANT_CAPACITY_KWP=11.475
+# Optionale nutzbare Batteriekapazitaet in kWh.
+BATTERY_CAPACITY_KWH=30.72
+# Optionale Bezeichnung des Smart Meters.
+SMARTMETER_MODEL=solarassistant
+# Datenquelle: mqtt oder solarassistant.
+DATA_SOURCE=mqtt
+# Abstand zwischen Messungen in Millisekunden (300000 = 5 Minuten).
+UPLOAD_INTERVAL_MS=300000
+
+# MQTT-Quelle: Broker-URL; bei lokalem Broker Hostname/IP und Port anpassen.
+MQTT_URL=mqtt://host.docker.internal:1883
+# MQTT-Zugangsdaten; leer lassen, wenn der Broker keine Authentifizierung verlangt.
+MQTT_USERNAME=
+MQTT_PASSWORD=
+# MQTT-Topics mit Phasenspannungen in Volt; alle drei sind erforderlich.
+MQTT_TOPIC_L1=solar_assistant/inverter_1/grid_voltage_1/state
+MQTT_TOPIC_L2=solar_assistant/inverter_1/grid_voltage_2/state
+MQTT_TOPIC_L3=solar_assistant/inverter_1/grid_voltage_3/state
+# Optionales Topic mit Netzfrequenz in Hz; leer lassen, wenn nicht verfuegbar.
+MQTT_TOPIC_FREQUENCY=solar_assistant/inverter_1/grid_frequency/state
+# Optionale Messwerte; Topics leer lassen, wenn nicht verfuegbar.
+MQTT_TOPIC_L1_A=
+MQTT_TOPIC_L2_A=
+MQTT_TOPIC_L3_A=
+MQTT_TOPIC_POWER_FACTOR=
+MQTT_TOPIC_GRID_POWER_W=solar_assistant/inverter_1/grid_power_ct/state
+MQTT_TOPIC_APPARENT_POWER_VA=
+MQTT_TOPIC_BATTERY_SOC_PERCENT=solar_assistant/total/battery_state_of_charge/state
+# Optionales Topic mit heutiger PV-Prognose in Wh.
+MQTT_TOPIC_PV_FORECAST=
+# JSON-Pfad fuer Spannungs-/Frequenz-Payloads; leer bei rein numerischen Payloads.
+MQTT_JSON_KEY=
+# JSON-Pfad fuer die PV-Prognose; nur relevant, wenn MQTT_TOPIC_PV_FORECAST gesetzt ist.
+MQTT_PV_FORECAST_JSON_KEY=today.energy
+# Maximales Alter eines MQTT-Werts in Millisekunden (360000 = 6 Minuten).
+MQTT_MAX_VALUE_AGE_MS=360000
+
+# SolarAssistant-REST-Quelle: Basis-URL oder vollstaendige /api/v1/metrics-URL.
+# Der Adapter ergaenzt /api/v1/metrics automatisch, wenn nur die Basis-URL angegeben ist.
+SA_API_URL=http://solarassistant
+# Lokaler Geraetebenutzer fuer Basic Auth (SolarAssistant verwendet standardmaessig admin).
+SA_API_USERNAME=admin
+# Geraetepasswort fuer Basic Auth; alternativ SA_API_TOKEN verwenden.
+SA_API_PASSWORD=
+# Optionaler Bearer-Token; hat Vorrang vor Benutzername und Passwort, wenn gesetzt.
+SA_API_TOKEN=
+# Exakte Metric-Topics aus GET /api/v1/metrics fuer Phasenspannungen in Volt.
+# Die verfuegbaren Topic-Namen haengen von der SolarAssistant-Installation ab.
+SA_METRIC_TOPIC_L1=inverter_1/grid_voltage_1
+SA_METRIC_TOPIC_L2=inverter_1/grid_voltage_2
+SA_METRIC_TOPIC_L3=inverter_1/grid_voltage_3
+# Optionales Metric-Topic fuer Netzfrequenz in Hz.
+SA_METRIC_TOPIC_FREQUENCY=inverter_1/grid_frequency
+# Optionale Metric-Topics; exakte Topics aus GET /api/v1/metrics eintragen.
+SA_METRIC_TOPIC_L1_A=
+SA_METRIC_TOPIC_L2_A=
+SA_METRIC_TOPIC_L3_A=
+SA_METRIC_TOPIC_POWER_FACTOR=
+SA_METRIC_TOPIC_GRID_POWER_W=total/grid_power
+SA_METRIC_TOPIC_APPARENT_POWER_VA=
+SA_METRIC_TOPIC_BATTERY_SOC_PERCENT=total/battery_state_of_charge
+
+# Optionale SunPilot-Tagesprognose; leer lassen, um die Quelle zu deaktivieren.
+# Die API muss von diesem Container erreichbar sein.
+SUNPILOT_API_URL=https://sunpilot.meinnetz.eu
+# Plant-ID aus dem SunPilot-Pfad /api/v1/plants/{plant}/forecasts/power_pv.
+SUNPILOT_PLANT_ID=
+# API-Token; Bearer wird zuerst versucht, danach bei Bedarf X-API-Key.
+SUNPILOT_API_TOKEN=
+# Nur temporaer aktivieren: protokolliert Laenge und SHA-256-Fingerabdruck, nie den Token.
+SUNPILOT_AUTH_DIAGNOSTICS=false
+# Zeitzone fuer die lokale Tagesauswahl in energy_per_day.
+SUNPILOT_TIME_ZONE=Europe/Berlin
+# Zu sendender Gesamt-Tageswert in kWh.
+SUNPILOT_FORECAST_KIND=deterministic

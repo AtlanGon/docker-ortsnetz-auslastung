@@ -1,8 +1,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createHash } = require('node:crypto');
+const { EventEmitter } = require('node:events');
+const mqtt = require('mqtt');
 const { buildPayload, createUploader, loadConfig } = require('../src');
 const { parseNumber } = require('../src/mqtt/parser');
+const { createSource: createMqttSource } = require('../src/mqtt');
 const { createSource: createSolarAssistantSource } = require('../src/solarassistant');
 const { createSource: createSunPilotSource } = require('../src/sunpilot');
 
@@ -20,10 +23,55 @@ test('reads numeric and nested JSON MQTT payloads', () => {
     assert.equal(parseNumber(Buffer.from('not a number')), null);
 });
 
+test('reads configured optional values from MQTT topics', () => {
+    const originalConnect = mqtt.connect;
+    const client = new EventEmitter();
+    client.subscribe = (_topics, callback) => callback(null);
+    client.end = () => {};
+    mqtt.connect = () => client;
+
+    try {
+        const source = createMqttSource({
+            MQTT_URL: 'mqtt://broker.local',
+            MQTT_TOPIC_L1: 'grid/l1_v',
+            MQTT_TOPIC_L2: 'grid/l2_v',
+            MQTT_TOPIC_L3: 'grid/l3_v',
+            MQTT_TOPIC_L1_A: 'grid/l1_a',
+            MQTT_TOPIC_POWER_FACTOR: 'grid/pf',
+            MQTT_TOPIC_GRID_POWER_W: 'grid/power',
+            MQTT_TOPIC_APPARENT_POWER_VA: 'grid/apparent',
+            MQTT_TOPIC_BATTERY_SOC_PERCENT: 'battery/soc',
+        });
+        const stop = source.start({ onConnect: () => {}, onUpdate: () => {} });
+        client.emit('connect');
+        for (const [topic, value] of [
+            ['grid/l1_v', 230], ['grid/l2_v', 231], ['grid/l3_v', 229],
+            ['grid/l1_a', 1.2], ['grid/pf', 0.97], ['grid/power', -320],
+            ['grid/apparent', 1250], ['battery/soc', 0],
+        ]) {
+            client.emit('message', topic, Buffer.from(String(value)));
+        }
+
+        assert.deepEqual(source.getMeasurement(), {
+            l1V: 230, l2V: 231, l3V: 229,
+            l1A: 1.2, powerFactor: 0.97, gridPowerW: -320,
+            apparentPowerVa: 1250, batterySocPercent: 0,
+        });
+        stop();
+    } finally {
+        mqtt.connect = originalConnect;
+    }
+});
+
 test('builds the common API payload from normalized source values', () => {
     const config = loadConfig(env);
     const now = Date.parse('2026-11-02T12:00:00Z');
-    const reading = { l1V: 230, l2V: 231, l3V: 229, frequencyHz: 50, forecastKwh: 4.2 };
+    const reading = {
+        l1V: 230, l2V: 231, l3V: 229, frequencyHz: 50,
+        l1A: 1.2, l2A: -0.8, l3A: 0.4, powerFactor: 0.97,
+        gridPowerW: -320, apparentPowerVa: 1250, batterySocPercent: 0,
+        forecastKwh: 4.2,
+    };
 
     assert.deepEqual(buildPayload(config, reading, now), {
         observed_at: '2026-11-02T12:00:00.000Z',
@@ -32,10 +80,36 @@ test('builds the common API payload from normalized source values', () => {
         l1_v: 230,
         l2_v: 231,
         l3_v: 229,
-        integration_version: 'docker-0.2.0',
+        integration_version: 'docker-0.3.0',
         grid_frequency_hz: 50,
+        l1_a: 1.2,
+        l2_a: 0.8,
+        l3_a: 0.4,
+        power_factor: 0.97,
+        grid_power_w: -320,
+        apparent_power_va: 1250,
+        battery_soc_percent: 0,
         pv_forecast_kwh: 4.2,
     });
+});
+
+test('includes configured static capacity and omits invalid optional readings', () => {
+    const config = loadConfig({ ...env, PLANT_CAPACITY_KWP: '9.8', BATTERY_CAPACITY_KWH: '12.5' });
+    const payload = buildPayload(config, {
+        l1V: 230, l2V: 231, l3V: 229,
+        l1A: Number.NaN, l2A: -1, powerFactor: 1.2,
+        gridPowerW: -450, apparentPowerVa: 0, batterySocPercent: 101,
+    });
+
+    assert.equal(payload.plant_capacity_kwp, 9.8);
+    assert.equal(payload.battery_capacity, 12.5);
+    assert.equal(payload.l2_a, -1);
+    assert.equal(payload.grid_power_w, -450);
+    assert.equal(payload.apparent_power_va, 0);
+    assert.equal('l1_a' in payload, false);
+    assert.equal(payload.l2_a, -1);
+    assert.equal('power_factor' in payload, false);
+    assert.equal('battery_soc_percent' in payload, false);
 });
 
 test('rejects missing and implausible source voltages', () => {
@@ -77,6 +151,13 @@ test('reads SolarAssistant phase metrics through its authenticated REST API', as
         SA_METRIC_TOPIC_L2: 'ac_input_1/voltage_l2',
         SA_METRIC_TOPIC_L3: 'ac_input_1/voltage_l3',
         SA_METRIC_TOPIC_FREQUENCY: 'ac_input_1/frequency',
+        SA_METRIC_TOPIC_L1_A: 'ac_input_1/current_l1',
+        SA_METRIC_TOPIC_L2_A: 'ac_input_1/current_l2',
+        SA_METRIC_TOPIC_L3_A: 'ac_input_1/current_l3',
+        SA_METRIC_TOPIC_POWER_FACTOR: 'ac_input_1/power_factor',
+        SA_METRIC_TOPIC_GRID_POWER_W: 'grid/power',
+        SA_METRIC_TOPIC_APPARENT_POWER_VA: 'grid/apparent_power',
+        SA_METRIC_TOPIC_BATTERY_SOC_PERCENT: 'battery/soc',
     }, async (url, options) => {
         requestUrl = url;
         requestOptions = options;
@@ -88,6 +169,13 @@ test('reads SolarAssistant phase metrics through its authenticated REST API', as
                 { topic: 'ac_input_1/voltage_l2', value: 231 },
                 { topic: 'ac_input_1/voltage_l3', value: 229 },
                 { topic: 'ac_input_1/frequency', value: 50 },
+                { topic: 'ac_input_1/current_l1', value: 1.2 },
+                { topic: 'ac_input_1/current_l2', value: 0.8 },
+                { topic: 'ac_input_1/current_l3', value: 0.4 },
+                { topic: 'ac_input_1/power_factor', value: 0.97 },
+                { topic: 'grid/power', value: -320 },
+                { topic: 'grid/apparent_power', value: 1250 },
+                { topic: 'battery/soc', value: 0 },
             ],
         };
     });
@@ -97,6 +185,13 @@ test('reads SolarAssistant phase metrics through its authenticated REST API', as
         l2V: 231,
         l3V: 229,
         frequencyHz: 50,
+        l1A: 1.2,
+        l2A: 0.8,
+        l3A: 0.4,
+        powerFactor: 0.97,
+        gridPowerW: -320,
+        apparentPowerVa: 1250,
+        batterySocPercent: 0,
     });
     assert.equal(requestUrl, 'http://solarassistant.local/api/v1/metrics');
     assert.equal(requestOptions.headers.Authorization, `Basic ${Buffer.from('admin:secret').toString('base64')}`);

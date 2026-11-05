@@ -1,5 +1,5 @@
 const API_URL_DEFAULT = 'https://www.ortsnetz-auslastung.de/v1/measurements';
-const INTEGRATION_VERSION = 'docker-0.2.0';
+const INTEGRATION_VERSION = 'docker-0.3.0';
 
 function loadConfig(env = process.env) {
     const config = {
@@ -7,6 +7,7 @@ function loadConfig(env = process.env) {
         latitude: Number(env.LATITUDE),
         longitude: Number(env.LONGITUDE),
         plantCapacityKwp: env.PLANT_CAPACITY_KWP ? Number(env.PLANT_CAPACITY_KWP) : null,
+        batteryCapacityKwh: env.BATTERY_CAPACITY_KWH ? Number(env.BATTERY_CAPACITY_KWH) : null,
         smartmeterModel: env.SMARTMETER_MODEL || '',
         source: env.DATA_SOURCE || 'mqtt',
         uploadIntervalMs: Number(env.UPLOAD_INTERVAL_MS || 300000),
@@ -20,6 +21,9 @@ function loadConfig(env = process.env) {
     }
     if (config.plantCapacityKwp !== null && (!Number.isFinite(config.plantCapacityKwp) || config.plantCapacityKwp <= 0)) {
         throw new Error('PLANT_CAPACITY_KWP muss eine positive Zahl sein');
+    }
+    if (config.batteryCapacityKwh !== null && (!Number.isFinite(config.batteryCapacityKwh) || config.batteryCapacityKwh <= 0)) {
+        throw new Error('BATTERY_CAPACITY_KWH muss eine positive Zahl sein');
     }
     if (!Number.isFinite(config.uploadIntervalMs) || config.uploadIntervalMs <= 0) {
         throw new Error('UPLOAD_INTERVAL_MS muss eine positive Zahl sein');
@@ -46,8 +50,26 @@ function buildPayload(config, reading, now = Date.now()) {
     };
     if (config.smartmeterModel) payload.smartmeter_model = config.smartmeterModel;
     if (config.plantCapacityKwp !== null) payload.plant_capacity_kwp = config.plantCapacityKwp;
+    if (config.batteryCapacityKwh !== null) payload.battery_capacity = config.batteryCapacityKwh;
     if (Number.isFinite(reading.frequencyHz) && reading.frequencyHz >= 45 && reading.frequencyHz <= 55) {
         payload.grid_frequency_hz = reading.frequencyHz;
+    }
+    for (const phase of ['l1', 'l2', 'l3']) {
+        const current = reading[`${phase}A`];
+        if (Number.isFinite(current)) {
+            payload[`${phase}_a`] = current < 0 && current !== -1 ? Math.abs(current) : current;
+        }
+    }
+    if (Number.isFinite(reading.powerFactor) && reading.powerFactor >= 0 && reading.powerFactor <= 1
+        && reading.apparentPowerVa !== 0) {
+        payload.power_factor = reading.powerFactor;
+    }
+    if (Number.isFinite(reading.gridPowerW)) payload.grid_power_w = reading.gridPowerW;
+    if (Number.isFinite(reading.apparentPowerVa) && reading.apparentPowerVa >= 0) {
+        payload.apparent_power_va = reading.apparentPowerVa;
+    }
+    if (Number.isFinite(reading.batterySocPercent) && reading.batterySocPercent >= 0 && reading.batterySocPercent <= 100) {
+        payload.battery_soc_percent = reading.batterySocPercent;
     }
     if (Number.isFinite(reading.forecastKwh) && reading.forecastKwh >= 0) {
         payload.pv_forecast_kwh = reading.forecastKwh;

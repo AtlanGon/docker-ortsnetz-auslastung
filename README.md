@@ -23,6 +23,16 @@ Eine MQTT-PV-Tagesprognose wird in Wh erwartet und für die API in kWh
 umgerechnet. Alternativ kann SunPilot als unabhängige Prognosequelle konfiguriert
 werden.
 
+Weitere optionale MQTT-Messwerte können über `MQTT_TOPIC_L1_A` bis
+`MQTT_TOPIC_L3_A`, `MQTT_TOPIC_POWER_FACTOR`, `MQTT_TOPIC_GRID_POWER_W`,
+`MQTT_TOPIC_APPARENT_POWER_VA` und `MQTT_TOPIC_BATTERY_SOC_PERCENT` übertragen
+werden. Für SolarAssistant gibt es entsprechende `SA_METRIC_TOPIC_*`-Variablen.
+Die Werte werden in A, W, VA, Prozent bzw. als dimensionsloser Leistungsfaktor
+erwartet. `BATTERY_CAPACITY_KWH` ergänzt optional die statische
+Batteriekapazität; `PLANT_CAPACITY_KWP` bleibt die installierte PV-Leistung.
+Nicht konfigurierte oder unplausible Einzelwerte werden ausgelassen, ohne die
+übrige Messung zu verwerfen.
+
 Alle Laufzeitwerte stehen in `.env`; die Namen und Beispielwerte sind in
 `.env.example` dokumentiert. Bei einem Broker auf dem Docker-Host kann
 `mqtt://host.docker.internal:1883` verwendet werden. Bei einem Broker in einem
@@ -39,7 +49,7 @@ gesetzt sein; alternativ kann ein Bearer-Token in `.env` verwendet werden.
 	`SA_API_PASSWORD` eintragen. Alternativ `SA_API_TOKEN` setzen.
 2. `DATA_SOURCE=solarassistant` setzen.
 3. Die API-Metriken unter `http://<solarassistant-ip>/api/v1/metrics` aufrufen
-	und die Topics für L1, L2, L3 sowie optional Frequenz in die entsprechenden
+	und die Topics für L1, L2, L3 sowie optionale Werte in die entsprechenden
 	`SA_METRIC_TOPIC_*`-Variablen übernehmen.
 
 Die verfügbaren Topics hängen vom Wechselrichter und der Messgeräte-Konfiguration

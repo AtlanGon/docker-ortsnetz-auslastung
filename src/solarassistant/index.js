@@ -9,6 +9,13 @@ function createSource(env, fetchImpl = fetch) {
             l2: env.SA_METRIC_TOPIC_L2 || '',
             l3: env.SA_METRIC_TOPIC_L3 || '',
             frequency: env.SA_METRIC_TOPIC_FREQUENCY || '',
+            l1A: env.SA_METRIC_TOPIC_L1_A || '',
+            l2A: env.SA_METRIC_TOPIC_L2_A || '',
+            l3A: env.SA_METRIC_TOPIC_L3_A || '',
+            powerFactor: env.SA_METRIC_TOPIC_POWER_FACTOR || '',
+            gridPower: env.SA_METRIC_TOPIC_GRID_POWER_W || '',
+            apparentPower: env.SA_METRIC_TOPIC_APPARENT_POWER_VA || '',
+            batterySoc: env.SA_METRIC_TOPIC_BATTERY_SOC_PERCENT || '',
         },
     };
     validateConfig(config);
@@ -49,6 +56,14 @@ function createSource(env, fetchImpl = fetch) {
             };
             if (config.topics.frequency) {
                 measurement.frequencyHz = values.get(config.topics.frequency);
+            }
+            for (const [topicKey, readingKey] of [
+                ['l1A', 'l1A'], ['l2A', 'l2A'], ['l3A', 'l3A'],
+                ['powerFactor', 'powerFactor'], ['gridPower', 'gridPowerW'],
+                ['apparentPower', 'apparentPowerVa'], ['batterySoc', 'batterySocPercent'],
+            ]) {
+                const topic = config.topics[topicKey];
+                if (topic) measurement[readingKey] = values.get(topic);
             }
             return measurement;
         },
